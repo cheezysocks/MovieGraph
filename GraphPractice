@@ -1,0 +1,138 @@
+#install.packages('networkD3')
+#install.packages('sqldf')
+library(sqldf)
+library(networkD3)
+
+
+data <- read.csv("C:\\Users\\raich\\Desktop\\Upskilling\\Data\\Results3.csv")
+df <- data.frame(data)
+
+searchTerm <- "'Steven Spieldberg', 'George Lucas'"
+
+query <- sprintf("  select *
+                    from df
+                    where
+                    primaryName in (%s)
+                    or
+                    primaryTitle in (%s)
+                    union
+                    
+                    select *
+                    from df
+                    where primaryTitle in (
+                      select distinct primaryTitle
+                      from df
+                      where
+                      primaryName in (%s) 
+                      or
+                      primaryTitle in (%s)
+                    )
+                    ",searchTerm, searchTerm, searchTerm, searchTerm)
+cat(query)
+
+dfSearched <- sqldf(query)
+
+dfA <- unique(data.frame(dfSearched$primaryName, dfSearched$category))
+colnames(dfA)<-c('nodeName', 'nodeProperty')
+
+dfB <- data.frame(unique(dfSearched$primaryTitle))
+dfB$nodeProperty <- "Film"
+
+
+colnames(dfB)<-c('nodeName', 'nodeProperty')
+
+
+newdf <- sqldf("
+               select *
+               from dfA
+               union
+               select *
+               from dfB
+               
+               
+               ")
+newdf$nodeId <- 0:(nrow(newdf)-1)
+
+
+linksdf <- sqldf("
+  select distinct primaryTitle,nodeId
+  from df
+  join
+  newdf on
+  df.primaryName = newdf.nodeName
+ "
+)
+
+linksdf2 <- sqldf("
+  select distinct L.nodeId as source, newdf.nodeId as target
+  from linksdf L
+  join
+  newdf on
+  L.primaryTitle = newdf.nodeName
+ "
+)
+
+
+nodesData <- sqldf("
+select *
+from newdf
+"
+)
+
+linksData <- sqldf("
+select *
+from linksdf2
+              ")
+
+forceNetwork(Links = linksData, Nodes = nodesData, Source = "source",
+             Target = "target", NodeID = "nodeName",
+             Group = "nodeProperty", opacity = 0.4, zoom = TRUE, legend = TRUE)
+
+
+# 
+# 
+# 
+# help(forceNetwork)
+# 
+# # 
+# # 
+# # df2 <- sqldf("
+# #              select distinct * 
+# #              from df 
+# #              where primaryName = 'Martin Scorsese'
+# #              or  primaryName = 'Quentin Tarantino' 
+#              
+#              union
+#              select distinct * 
+#              from df 
+#              where primaryTitle in (select distinct  primaryTitle
+#              from df 
+#              where primaryName = 'Martin Scorsese' 
+#              or  primaryName = 'Quentin Tarantino' 
+#              )
+#              
+#              ")
+# 
+# networkdata <- data.frame(df2$primaryName, df2$primaryTitle, zoom = "TRUE")
+# 
+# simpleNetwork(networkdata)
+# 
+# help(forceNetwork)
+# 
+# 
+# mis
+# # 
+# # df
+# # Link <- data.frame(df$primaryName, df$primaryTitle)
+# # Node <- data.frame(df$primaryName,df$category)
+# data(MisLinks)
+# data(MisNodes)
+# # 
+# # forceNetwork(Links = MisLinks, Nodes = MisNodes,
+# #              Source = "source", Target = "target",
+# #              Value = "value", NodeID = "name",
+# #              Group = "group", opacity = 0.8)
+# # help(forceNetwork)
+# # 
+# # 
+# # #Mislinks
